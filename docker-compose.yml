@@ -1,0 +1,55 @@
+version: '3'
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+#Volumes
+volumes:
+  mysql_db:
+    driver: local
+
+services:
+  app:
+    build:
+      context: ./docker
+    restart: unless-stopped
+    tty: true
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx Service
+  nginx:
+    build:
+      context: ./docker/nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www:cached
+    networks:
+      - app-network
+
+  #MySQL Service
+  mysql:
+    image: mysql:latest
+    restart: unless-stopped
+    tty: true
+    environment:
+      MYSQL_DATABASE: main
+      MYSQL_USER: DOCK
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_db:/var/lib/mysql/
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
